@@ -1,3 +1,4 @@
 python-telegram-bot
 assemblyai
 deep-translator
+flask
