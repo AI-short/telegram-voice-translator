@@ -2,7 +2,8 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 import assemblyai as aai
 from deep_translator import GoogleTranslator
-
+from flask import Flask
+import threading
 import os
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -24,6 +25,7 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         transcriber = aai.Transcriber()
+
         transcript = transcriber.transcribe(
             "voice.ogg",
             config=config
@@ -38,11 +40,13 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         detected = transcript.json_response.get(
-            "language_code", ""
+            "language_code",
+            ""
         )
 
         # Russian -> English
         if detected.startswith("ru"):
+
             translated = GoogleTranslator(
                 source="ru",
                 target="en"
@@ -54,6 +58,7 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Hindi -> Russian
         elif detected.startswith("hi"):
+
             translated = GoogleTranslator(
                 source="hi",
                 target="ru"
@@ -74,11 +79,33 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+# Telegram bot
 app = Application.builder().token(BOT_TOKEN).build()
 
 app.add_handler(
     MessageHandler(filters.VOICE, voice_handler)
 )
 
-print("Bot started")
-app.run_polling()
+
+# Flask server for Render
+web = Flask(__name__)
+
+
+@web.route("/")
+def home():
+    return "Victoria Bot is running!"
+
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    web.run(host="0.0.0.0", port=port)
+
+
+def run_bot():
+    print("Bot started")
+    app.run_polling()
+
+
+threading.Thread(target=run_web).start()
+
+run_bot()
